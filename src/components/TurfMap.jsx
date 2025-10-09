@@ -1,10 +1,18 @@
 import React from "react";
 import { FaMapMarkerAlt, FaDirections } from "react-icons/fa";
 
-const TurfMap = ({ turfName, location, turfId }) => {
-  // Generate coordinates based on turf ID (for demo purposes)
-  // In production, you'd have actual coordinates from your database
-  const getCoordinates = (id) => {
+const TurfMap = ({ turfName, location, turfId, coordinates }) => {
+  // Use provided coordinates or generate based on turf ID
+  const getCoordinates = (id, providedCoords) => {
+    // If coordinates are provided, use them
+    if (providedCoords && providedCoords.lat && providedCoords.lng) {
+      return {
+        lat: providedCoords.lat,
+        lng: providedCoords.lng,
+        name: location || 'Location'
+      };
+    }
+    
     const baseCoordinates = [
       { lat: 9.9312, lng: 76.2673, name: "Kochi" },
       { lat: 10.0261, lng: 76.3125, name: "Ernakulam" },
@@ -16,11 +24,18 @@ const TurfMap = ({ turfName, location, turfId }) => {
       { lat: 10.1081, lng: 76.3520, name: "Aluva" },
     ];
     
-    const index = (id - 1) % baseCoordinates.length;
+    // Generate hash from ID (works with both strings and numbers)
+    let hash = 0;
+    const idStr = String(id || '0');
+    for (let i = 0; i < idStr.length; i++) {
+      hash = ((hash << 5) - hash) + idStr.charCodeAt(i);
+      hash = hash & hash; // Convert to 32bit integer
+    }
+    const index = Math.abs(hash) % baseCoordinates.length;
     return baseCoordinates[index];
   };
 
-  const coords = getCoordinates(turfId);
+  const coords = getCoordinates(turfId, coordinates);
   
   // Google Maps embed URL
   const mapUrl = `https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${coords.lat},${coords.lng}&zoom=15`;
@@ -51,7 +66,7 @@ const TurfMap = ({ turfName, location, turfId }) => {
         </p>
         <p className="text-gray-400">{location}</p>
         <p className="text-sm text-gray-500 mt-1">
-          Coordinates: {coords.lat.toFixed(4)}, {coords.lng.toFixed(4)}
+          Coordinates: {coords.lat && !isNaN(coords.lat) ? coords.lat.toFixed(4) : '0.0000'}, {coords.lng && !isNaN(coords.lng) ? coords.lng.toFixed(4) : '0.0000'}
         </p>
       </div>
 
@@ -78,11 +93,11 @@ const TurfMap = ({ turfName, location, turfId }) => {
         </div>
         <div className="bg-gray-700/30 rounded-lg p-3 text-center">
           <p className="text-xs text-gray-400 mb-1">Latitude</p>
-          <p className="font-semibold text-cyan-400">{coords.lat.toFixed(4)}°</p>
+          <p className="font-semibold text-cyan-400">{coords.lat && !isNaN(coords.lat) ? coords.lat.toFixed(4) : '0.0000'}°</p>
         </div>
         <div className="bg-gray-700/30 rounded-lg p-3 text-center">
           <p className="text-xs text-gray-400 mb-1">Longitude</p>
-          <p className="font-semibold text-cyan-400">{coords.lng.toFixed(4)}°</p>
+          <p className="font-semibold text-cyan-400">{coords.lng && !isNaN(coords.lng) ? coords.lng.toFixed(4) : '0.0000'}°</p>
         </div>
       </div>
 

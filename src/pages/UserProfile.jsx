@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { FaUser, FaEnvelope, FaPhone, FaCalendar, FaMapMarkerAlt, FaEdit, FaSave, FaTimes, FaHistory, FaFutbol, FaClock } from "react-icons/fa";
 import Header from "../components/Header";
 import Notification from "../components/Notification";
+import bookingService from "../services/bookingService";
 
 const UserProfile = () => {
   const navigate = useNavigate();
@@ -27,32 +28,47 @@ const UserProfile = () => {
     loadBookingHistory();
   }, [navigate]);
 
-  const loadBookingHistory = () => {
-    const bookings = JSON.parse(localStorage.getItem("turfBookings")) || {};
-    const history = [];
-
-    Object.keys(bookings).forEach(key => {
-      const [turfId, date, slotId] = key.split('-');
-      const slot = slotId.replace('slot-', '');
-      
-      history.push({
-        id: key,
-        turfId: parseInt(turfId),
-        turfName: getTurfName(parseInt(turfId)),
-        date,
-        time: `${slot}:00 - ${parseInt(slot) + 1}:00`,
-        status: new Date(date) < new Date() ? 'completed' : 'upcoming'
-      });
-    });
-
-    // Sort by date (newest first)
-    history.sort((a, b) => new Date(b.date) - new Date(a.date));
-    setBookingHistory(history);
+  const formatTime = (slots) => {
+    if (!slots || slots.length === 0) return '—';
+    const hours = slots
+      .map(s => parseInt(String(s).split('-')[1]))
+      .filter(h => !isNaN(h))
+      .sort((a, b) => a - b);
+    if (!hours.length) return '—';
+    const start = hours[0];
+    const end = (hours[hours.length - 1] + 1) % 24;
+    const fmt = (h) => `${h.toString().padStart(2, '0')}:00`;
+    return `${fmt(start)} - ${fmt(end)}`;
   };
 
-  const getTurfName = (turfId) => {
-    const turfNames = ['Elite Turf Arena', 'Pro Stadium', 'Champion Field', 'Victory Arena', 'Legends Ground', 'Golden Boot Stadium'];
-    return turfNames[(turfId - 1) % turfNames.length];
+  const loadBookingHistory = async () => {
+    try {
+      const res = await bookingService.getUserBookingsDetailed();
+      if (res?.success && Array.isArray(res.bookings)) {
+        const list = res.bookings.map(b => {
+          const bookingDate = new Date(b.date);
+          const today = new Date();
+          today.setHours(0,0,0,0);
+          bookingDate.setHours(0,0,0,0);
+          const cancelled = b.paymentStatus === 'cancelled';
+          const status = cancelled ? 'cancelled' : (bookingDate < today ? 'completed' : 'upcoming');
+          return {
+            id: b.bookingId,
+            bookingId: b.bookingId,
+            turfId: b.turfId,
+            turfName: (b.turf && b.turf.name) || b.turfName || 'Turf',
+            date: b.date,
+            time: formatTime(b.slots),
+            status
+          };
+        }).sort((a,b) => new Date(b.date) - new Date(a.date));
+        setBookingHistory(list);
+        return;
+      }
+    } catch (err) {
+      // no offline fallback
+    }
+    setBookingHistory([]);
   };
 
   const handleLogout = () => {
@@ -94,12 +110,19 @@ const UserProfile = () => {
     setEditedUser({ ...editedUser, [field]: value });
   };
 
-  const cancelBooking = (bookingId) => {
-    const bookings = JSON.parse(localStorage.getItem("turfBookings")) || {};
-    delete bookings[bookingId];
-    localStorage.setItem("turfBookings", JSON.stringify(bookings));
-    loadBookingHistory();
-    setNotification({ type: 'success', message: 'Booking cancelled successfully!' });
+  const cancelBooking = async (bookingId) => {
+    try {
+      const reason = window.prompt('Reason for cancellation (optional):', '') || '';
+      const res = await bookingService.cancelBooking(bookingId, reason);
+      if (res?.success) {
+        setNotification({ type: 'success', message: 'Booking cancelled successfully!' });
+        await loadBookingHistory();
+      } else {
+        setNotification({ type: 'error', message: res?.message || 'Failed to cancel booking' });
+      }
+    } catch (e) {
+      setNotification({ type: 'error', message: e.message || 'Failed to cancel booking' });
+    }
   };
 
   const closeNotification = () => {

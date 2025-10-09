@@ -165,6 +165,16 @@ const Login = () => {
             Create Account
           </span>
         </p>
+
+        {/* Owner Portal Link */}
+        <div className="mt-4 text-center">
+          <span
+            className="text-purple-400 hover:text-purple-300 cursor-pointer transition-colors font-medium text-sm"
+            onClick={() => navigate("/owner/login")}
+          >
+            🏢 Turf Owner? Login Here
+          </span>
+        </div>
       </div>
 
       {/* Bottom Branding */}

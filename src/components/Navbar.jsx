@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { FaFutbol, FaHome, FaSearch, FaUser, FaBars, FaTimes } from "react-icons/fa";
+import { FaFutbol, FaHome, FaSearch, FaUser, FaBars, FaTimes, FaHistory } from "react-icons/fa";
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userName, setUserName] = useState('');
   const location = useLocation();
   const navigate = useNavigate();
   
@@ -19,6 +21,28 @@ const Navbar = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Check login status
+  useEffect(() => {
+    const checkLoginStatus = () => {
+      const token = localStorage.getItem('token');
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      
+      if (token && user?.name) {
+        setIsLoggedIn(true);
+        setUserName(user.name);
+      } else {
+        setIsLoggedIn(false);
+        setUserName('');
+      }
+    };
+    
+    checkLoginStatus();
+    
+    // Listen for storage changes (login/logout in other tabs)
+    window.addEventListener('storage', checkLoginStatus);
+    return () => window.removeEventListener('storage', checkLoginStatus);
+  }, [location]);
 
   const isActiveLink = (path) => {
     return location.pathname === path;
@@ -50,7 +74,7 @@ const Navbar = () => {
               }`}>
                 Sporzo
               </span>
-              <p className={`text-xs -mt-1 ${isAuthPage || !isScrolled ? 'text-white/70' : 'text-gray-500'}`}>Smart Booking</p>
+              <p className={`text-xs -mt-1 ${isAuthPage || !isScrolled ? 'text-white/70' : 'text-gray-500'}`}>Your Game, Your Turf</p>
             </div>
           </Link>
 
@@ -76,32 +100,77 @@ const Navbar = () => {
             >
               <FaSearch /> Browse Turfs
             </Link>
+            {isLoggedIn && (
+              <Link 
+                to="/booking-history" 
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-300 ${
+                  isAuthPage || !isScrolled
+                    ? (isActiveLink('/booking-history') ? 'text-white bg-white/20' : 'text-white/80 hover:text-white hover:bg-white/10')
+                    : (isActiveLink('/booking-history') ? 'text-purple-600 bg-purple-50' : 'text-gray-700 hover:text-purple-600 hover:bg-purple-50')
+                }`}
+              >
+                <FaHistory /> History
+              </Link>
+            )}
           </div>
 
           {/* Auth Buttons - Desktop */}
           <div className="hidden md:flex items-center space-x-3">
-            <Link 
-              to="/login" 
-              className={`px-4 py-2 rounded-xl font-medium transition-all duration-300 ${
-                isAuthPage || !isScrolled
-                  ? 'text-white hover:bg-white/10'
-                  : 'text-emerald-600 hover:bg-emerald-50'
-              }`}
-            >
-              Login
-            </Link>
-            <Link 
-              to="/register" 
-              className={`px-4 py-2 rounded-xl font-medium transition-all duration-300 shadow-lg ${
-                isAuthPage || !isScrolled
-                  ? 'bg-gradient-to-r from-emerald-500 to-cyan-500 text-black hover:shadow-xl transform hover:-translate-y-0.5'
-                  : isScrolled
-                    ? 'bg-gradient-to-r from-emerald-500 to-cyan-500 text-black hover:shadow-xl transform hover:-translate-y-0.5'
-                    : 'bg-white text-emerald-600 hover:bg-emerald-50'
-              }`}
-            >
-              Register
-            </Link>
+            {isLoggedIn ? (
+              <>
+                <Link 
+                  to="/profile" 
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all duration-300 ${
+                    isAuthPage || !isScrolled
+                      ? 'text-white hover:bg-white/10'
+                      : 'text-emerald-600 hover:bg-emerald-50'
+                  }`}
+                >
+                  <FaUser /> {userName}
+                </Link>
+                <button 
+                  onClick={() => {
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                    setIsLoggedIn(false);
+                    setUserName('');
+                    navigate('/');
+                  }}
+                  className={`px-4 py-2 rounded-xl font-medium transition-all duration-300 shadow-lg ${
+                    isAuthPage || !isScrolled
+                      ? 'bg-gradient-to-r from-red-500 to-red-600 text-white hover:shadow-xl transform hover:-translate-y-0.5'
+                      : 'bg-gradient-to-r from-red-500 to-red-600 text-white hover:shadow-xl transform hover:-translate-y-0.5'
+                  }`}
+                >
+                  Logout
+                </button>
+              </>
+            ) : (
+              <>
+                <Link 
+                  to="/login" 
+                  className={`px-4 py-2 rounded-xl font-medium transition-all duration-300 ${
+                    isAuthPage || !isScrolled
+                      ? 'text-white hover:bg-white/10'
+                      : 'text-emerald-600 hover:bg-emerald-50'
+                  }`}
+                >
+                  Login
+                </Link>
+                <Link 
+                  to="/register" 
+                  className={`px-4 py-2 rounded-xl font-medium transition-all duration-300 shadow-lg ${
+                    isAuthPage || !isScrolled
+                      ? 'bg-gradient-to-r from-emerald-500 to-cyan-500 text-black hover:shadow-xl transform hover:-translate-y-0.5'
+                      : isScrolled
+                        ? 'bg-gradient-to-r from-emerald-500 to-cyan-500 text-black hover:shadow-xl transform hover:-translate-y-0.5'
+                        : 'bg-white text-emerald-600 hover:bg-emerald-50'
+                  }`}
+                >
+                  Register
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -139,27 +208,72 @@ const Navbar = () => {
             >
               <FaSearch /> Browse Turfs
             </Link>
+            {isLoggedIn && (
+              <Link 
+                to="/booking-history" 
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg mx-2 transition-all duration-300 ${isScrolled 
+                  ? (isActiveLink('/booking-history') ? 'bg-purple-50 text-purple-600' : 'text-gray-700 hover:bg-gray-100') 
+                  : (isActiveLink('/booking-history') ? 'bg-white/20 text-white' : 'text-white hover:bg-white/10')
+                }`}
+                onClick={() => setIsMenuOpen(false)}
+              >
+                <FaHistory /> Booking History
+              </Link>
+            )}
             <div className="border-t mx-4 my-2 border-gray-200"></div>
-            <Link 
-              to="/login" 
-              className={`block px-4 py-3 rounded-lg mx-2 transition-all duration-300 ${isScrolled 
-                ? 'text-emerald-600 hover:bg-emerald-50' 
-                : 'text-white hover:bg-white/10'
-              }`}
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Login
-            </Link>
-            <Link 
-              to="/register" 
-              className={`block px-4 py-3 mx-2 rounded-lg transition-all duration-300 ${isScrolled 
-                ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white' 
-                : 'bg-white text-emerald-600'
-              }`}
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Register
-            </Link>
+            {isLoggedIn ? (
+              <>
+                <Link 
+                  to="/profile" 
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg mx-2 transition-all duration-300 ${isScrolled 
+                    ? 'text-emerald-600 hover:bg-emerald-50' 
+                    : 'text-white hover:bg-white/10'
+                  }`}
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  <FaUser /> {userName} - Profile
+                </Link>
+                <button 
+                  onClick={() => {
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                    setIsLoggedIn(false);
+                    setUserName('');
+                    setIsMenuOpen(false);
+                    navigate('/');
+                  }}
+                  className={`block w-full text-left px-4 py-3 mx-2 rounded-lg transition-all duration-300 ${isScrolled 
+                    ? 'bg-gradient-to-r from-red-500 to-red-600 text-white' 
+                    : 'bg-red-600 text-white'
+                  }`}
+                >
+                  Logout
+                </button>
+              </>
+            ) : (
+              <>
+                <Link 
+                  to="/login" 
+                  className={`block px-4 py-3 rounded-lg mx-2 transition-all duration-300 ${isScrolled 
+                    ? 'text-emerald-600 hover:bg-emerald-50' 
+                    : 'text-white hover:bg-white/10'
+                  }`}
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Login
+                </Link>
+                <Link 
+                  to="/register" 
+                  className={`block px-4 py-3 mx-2 rounded-lg transition-all duration-300 ${isScrolled 
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white' 
+                    : 'bg-white text-emerald-600'
+                  }`}
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Register
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </div>
